@@ -174,6 +174,8 @@ struct ProfileView: View {
                         self.posts = decodedPosts
                         self.isLoading = false
                     }
+                    
+                    print(decodedPosts)
                 } catch {
                     print("❌ Decoding error: \(error)")
                     DispatchQueue.main.async { self.isLoading = false }
@@ -352,31 +354,34 @@ struct ProfileView: View {
         return LazyVGrid(columns: columns, spacing: 2) {
             ForEach(filteredPosts) { post in
                 if let url = PostService.shared.imageURL(for: post.imagePath) {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .empty:
-                            ZStack {
-                                Color.gray.opacity(0.2)
-                                ProgressView()
-                            }
-                            .frame(width: itemSize, height: itemSize)
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFill()
+                    NavigationLink(destination: PostDetailView(post: post)) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .empty:
+                                ZStack {
+                                    Color.gray.opacity(0.2)
+                                    ProgressView()
+                                }
                                 .frame(width: itemSize, height: itemSize)
-                                .clipped()
-                        case .failure:
-                            ZStack {
-                                Color.red.opacity(0.2)
-                                Image(systemName: "exclamationmark.triangle")
-                                    .foregroundColor(.red)
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: itemSize, height: itemSize)
+                                    .clipped()
+                            case .failure:
+                                ZStack {
+                                    Color.red.opacity(0.2)
+                                    Image(systemName: "exclamationmark.triangle")
+                                        .foregroundColor(.red)
+                                }
+                                .frame(width: itemSize, height: itemSize)
+                            @unknown default:
+                                EmptyView()
                             }
-                            .frame(width: itemSize, height: itemSize)
-                        @unknown default:
-                            EmptyView()
                         }
                     }
+                    .buttonStyle(.plain) // removes default blue link highlight
                 }
             }
         }
@@ -388,18 +393,51 @@ struct ProfileView: View {
             ForEach(likedPostsByOthers) { post in
                 NavigationLink(destination: PostDetailView(post: post)) {
                     HStack {
-                        Image("person1")
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 36, height: 36)
-                            .clipShape(Circle())
+                        // --- Get the first liker’s email (not the current user)
+                        if let likerEmail = post.likes.compactMap({ $0 }).first(where: { $0 != currentUserEmail }) {
+                            
+                            // Try to build their profile photo URL
+                            let profileURL = URL(string: "https://media-storage-hackaton.onrender.com/connect/profile/\(likerEmail).jpg")
+                            
+                            AsyncImage(url: profileURL) { phase in
+                                switch phase {
+                                case .empty:
+                                    Circle()
+                                        .fill(Color.gray.opacity(0.2))
+                                        .frame(width: 36, height: 36)
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 36, height: 36)
+                                        .clipShape(Circle())
+                                case .failure:
+                                    Image("person1")
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 36, height: 36)
+                                        .clipShape(Circle())
+                                @unknown default:
+                                    EmptyView()
+                                }
+                            }
+                        } else {
+                            // --- If no liker found (shouldn’t usually happen)
+                            Image("person1")
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 36, height: 36)
+                                .clipShape(Circle())
+                        }
 
+                        // --- Liker text ---
                         Text("\(firstLikerEmail(post)) liked your post")
                             .font(.subheadline)
                             .foregroundColor(.primary)
 
                         Spacer()
 
+                        // --- Post thumbnail (same as before)
                         if let url = PostService.shared.imageURL(for: post.imagePath) {
                             AsyncImage(url: url) { phase in
                                 switch phase {
@@ -525,7 +563,7 @@ struct ProfileView: View {
                     selectedImage = nil
                     loadProfilePhoto()
                     uploadInProgress = false
-                    uploadLog = "Upload successful"
+//                    uploadLog = "Upload successful"
                 }
             } else {
                 print("❌ Upload failed (non-200)")
@@ -548,7 +586,7 @@ struct ProfileView: View {
         let email = currentUserEmail
         guard let url = URL(string: "\(baseURL)/connect/profile/\(email).jpg") else { return }
         print("🔽 Loading remote profile photo from: \(url.absoluteString)")
-        uploadLog = "Loading remote profile photo..."
+//        uploadLog = "Loading remote profile photo..."
         profileImageURL = url
     }
 }

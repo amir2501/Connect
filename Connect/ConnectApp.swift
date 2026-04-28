@@ -9,6 +9,10 @@ import SwiftUI
 
 @main
 struct ConnectApp: App {
+    init() {
+           TabBarAppearance.clearBackground()
+       }
+    
     var body: some Scene {
         WindowGroup {
             ContentView()

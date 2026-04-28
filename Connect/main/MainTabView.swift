@@ -17,63 +17,40 @@ struct MainTabView: View {
         ZStack {
             if isLoading {
                 ProgressView("Loading...")
-                    .progressViewStyle(CircularProgressViewStyle(tint: .blue))
                     .scaleEffect(1.5)
             } else {
                 TabView(selection: $selectedTab) {
-                    NavigationStack {
-                        HomeView()
-                    }
-                    .tabItem {
-                        Image(systemName: "house.fill")
-                        Text("Home")
-                    }
-                    .tag(0)
 
-                    NavigationStack {
-                        SearchView()
-                    }
-                    .tabItem {
-                        Image(systemName: "magnifyingglass")
-                        Text("Search")
-                    }
-                    .tag(1)
+                    NavigationStack { HomeView() }
+                        .tabItem { Label("Home", systemImage: "house.fill") }
+                        .tag(0)
 
-                    // Placeholder for the "+" action
+                    NavigationStack { SearchView() }
+                        .tabItem { Label("Search", systemImage: "magnifyingglass") }
+                        .tag(1)
+
                     Color.clear
                         .tabItem {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: 30))
                         }
-                        .tag(99) // Unique tag
-                        .onAppear {
-                            showCreatePost = true
-                        }
+                        .tag(99)
+                        .onAppear { showCreatePost = true }
 
-                    NavigationStack {
-                        FindPeopleView()
-                    }
-                    .tabItem {
-                        Image(systemName: "person.3.fill")
-                        Text("Find People")
-                    }
-                    .tag(2)
+                    NavigationStack { FindPeopleView() }
+                        .tabItem { Label("Find People", systemImage: "person.3.fill") }
+                        .tag(2)
 
-                    NavigationStack {
-                        ProfileView()
-                    }
-                    .tabItem {
-                        Image(systemName: "person.crop.circle")
-                        Text("Profile")
-                    }
-                    .tag(3)
+                    NavigationStack { ProfileView() }
+                        .tabItem { Label("Profile", systemImage: "person.crop.circle") }
+                        .tag(3)
                 }
                 .tint(.figmaBlue)
-                .onChange(of: selectedTab) { newValue in
+                .onChange(of: selectedTab) { _ in
                     playHapticFeedback(strength: .heavy)
                 }
                 .sheet(isPresented: $showCreatePost, onDismiss: {
-                    selectedTab = 0 // Return to Home after dismissing
+                    selectedTab = 0
                 }) {
                     CreatePostView()
                 }
@@ -94,29 +71,17 @@ struct HomeView: View {
     @State private var navigateToRandomPicker = false
     @State private var navigateToRewards = false
     @State private var navigateToOutfitIdeas = false
-
+    
+//    @State private var selectedEvent = "For You"
+    @State private var selectedEvent = "For You"
+    @State private var activeEvent: String? = nil
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Top bar
                 HStack {
-                    Menu {
-                        Button("🎲 Random Place Picker", action: {
-                            navigateToRandomPicker = true
-                        })
-
-                        Button("🎁 Redeem Rewards", action: {
-                            navigateToRewards = true
-                        })
-
-                        Button("🧥 Outfit Ideas", action: {
-                            navigateToOutfitIdeas = true
-                        })
-                    } label: {
-                        Label("Connect", systemImage: "chevron.down")
-                            .font(.title2.bold())
-                            .foregroundColor(.primary)
-                    }
+                    Text("Connect")
+                        .font(.title2.bold())
 
                     Spacer()
 
@@ -135,10 +100,36 @@ struct HomeView: View {
                 .padding(.bottom, 8)
 
                 Divider()
-
+                
+                
                 // Posts
                 ScrollView {
                     VStack(spacing: 24) {
+                        // 👇EVENTS SELECTOR
+                        EventsSelectorView(
+                            selected: $selectedEvent,
+                            onSelect: { event in
+                                activeEvent = event
+                            }
+                        )
+                        .padding(.top, 8)
+                        .navigationDestination(item: $activeEvent) { event in
+                            switch event {
+                            case "Randomizer":
+                                RandomPlacePickerView()
+                            case "Fashion Week":
+                                OutfitView()
+                            case "Friends":
+                                FindPeopleView()
+                            case "Events":
+                                EventsListView() // 👈 create this (simple list or placeholder)
+                            case "For You":
+                                ForYouView() // 👈 optional custom feed
+                            default:
+                                EmptyView()
+                            }
+                        }
+                        
                         ForEach(posts) { post in
                             NavigationLink(destination: PostDetailView(post: post)) {
                                 PostView(post: post)
@@ -179,6 +170,22 @@ struct HomeView: View {
         }
     }
 }
+
+
+struct EventsListView: View {
+    var body: some View {
+        Text("Events List")
+            .navigationTitle("Events")
+    }
+}
+
+struct ForYouView: View {
+    var body: some View {
+        Text("For You Feed")
+            .navigationTitle("For You")
+    }
+}
+
 // MARK: - Search View with Instagram-style explore grid
 
 struct SearchView: View {
@@ -200,4 +207,22 @@ func playHapticFeedback(strength: UIImpactFeedbackGenerator.FeedbackStyle = .med
 
 #Preview {
     MainTabView()
+}
+
+
+extension View {
+    @ViewBuilder
+    func ifAvailableiOS18<Content: View>(
+        _ transform: (Self) -> Content
+    ) -> some View {
+        if #available(iOS 18.0, *) {
+            transform(self)
+        } else {
+            self
+        }
+    }
+}
+
+extension String: Identifiable {
+    public var id: String { self }
 }
